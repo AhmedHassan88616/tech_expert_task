@@ -5,7 +5,10 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tech_experts_task/bussiness_logic/register_cubit/register_cubit.dart';
-import 'package:tech_experts_task/shared/components/components.dart';
+import 'package:tech_experts_task/shared/components/default_button.dart';
+import 'package:tech_experts_task/shared/components/default_text_button.dart';
+import 'package:tech_experts_task/shared/components/default_text_form_field.dart';
+import 'package:tech_experts_task/shared/constants/constants.dart';
 
 class RegisterScreen extends StatelessWidget {
   var _nameController = TextEditingController();
@@ -15,6 +18,7 @@ class RegisterScreen extends StatelessWidget {
   var _passwordController = TextEditingController();
 
   var _addressController = TextEditingController();
+
   var _birthDateController = TextEditingController();
 
   var _formKey = GlobalKey<FormState>();
@@ -23,37 +27,11 @@ class RegisterScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocListener<RegisterCubit, RegisterStates>(
       listener: (context, state) {
-        if (state is RegisterErrorState) {
-          print('error : ' + state.error.toString());
-          if (state.error is DioError) if ((state.error as DioError).error
-              is SocketException)
-            showToast(
-                message: 'No connection to internet',
-                state: ToastStates.FAILED);
-          else
-            showToast(
-                message: 'There is unknownError', state: ToastStates.FAILED);
-        } else if (state is RegisterSuccessState) {
-          if (state.registerModel.success.isEmpty) {
-            String errorMsg = "";
-            if (state.registerModel.error!.email != null)
-              errorMsg = state.registerModel.error!.email![0];
-            else if (state.registerModel.error!.name != null)
-              errorMsg = state.registerModel.error!.name![0];
-            else if (state.registerModel.error!.password != null)
-              errorMsg = state.registerModel.error!.password![0];
-            else
-              errorMsg = 'There is unknown error.';
-            showToast(message: errorMsg, state: ToastStates.FAILED);
-          } else {
-            Navigator.of(context).pop();
-            showToast(
-                message: state.registerModel.success,
-                state: ToastStates.SUCCESS);
-          }
-        }
-
-        if (state is SelectDateOfBirthState)
+        if (state is RegisterErrorState)
+          _registerErrorStateToast(state.error);
+        else if (state is RegisterSuccessState)
+          _registerSuccessStateToast(context, state.registerModel);
+       else if (state is SelectDateOfBirthState)
           _birthDateController.text = state.selectedDate;
       },
       child: Scaffold(
@@ -74,7 +52,7 @@ class RegisterScreen extends StatelessWidget {
                       SizedBox(
                         height: 30.0,
                       ),
-                      defaultFormField(
+                      DefaultTextFormField(
                         controller: _nameController,
                         type: TextInputType.text,
                         validate: (value) {
@@ -88,7 +66,7 @@ class RegisterScreen extends StatelessWidget {
                       SizedBox(
                         height: 15.0,
                       ),
-                      defaultFormField(
+                      DefaultTextFormField(
                         controller: _emailController,
                         type: TextInputType.emailAddress,
                         validate: (String value) {
@@ -103,7 +81,7 @@ class RegisterScreen extends StatelessWidget {
                       SizedBox(
                         height: 15.0,
                       ),
-                      defaultFormField(
+                      DefaultTextFormField(
                         controller: _passwordController,
                         type: TextInputType.visiblePassword,
                         suffix: RegisterCubit.get(context).visibleIcon,
@@ -122,7 +100,7 @@ class RegisterScreen extends StatelessWidget {
                       SizedBox(
                         height: 15.0,
                       ),
-                      defaultFormField(
+                      DefaultTextFormField(
                         controller: _addressController,
                         type: TextInputType.text,
                         label: 'Address',
@@ -132,11 +110,13 @@ class RegisterScreen extends StatelessWidget {
                         height: 10.0,
                       ),
                       BlocBuilder<RegisterCubit, RegisterStates>(
-                        buildWhen: (previous,current)=>current is SelectDateOfBirthState,
+                        buildWhen: (previous, current) =>
+                            current is SelectDateOfBirthState,
                         builder: (context, state) {
                           final registerCubit =
                               RegisterCubit.get(context, listen: false);
-                          return defaultFormField(
+
+                          return DefaultTextFormField(
                             controller: _birthDateController,
                             readOnly: true,
                             type: TextInputType.text,
@@ -152,7 +132,8 @@ class RegisterScreen extends StatelessWidget {
                         height: 10.0,
                       ),
                       BlocBuilder<RegisterCubit, RegisterStates>(
-                        buildWhen: (previous,current)=>current is ChangeRadioButtonValueState,
+                        buildWhen: (previous, current) =>
+                            current is ChangeRadioButtonValueState,
                         builder: (context, state) {
                           final registerCubit =
                               RegisterCubit.get(context, listen: false);
@@ -210,14 +191,15 @@ class RegisterScreen extends StatelessWidget {
                         height: 30.0,
                       ),
                       BlocBuilder<RegisterCubit, RegisterStates>(
-                        buildWhen: (previous,current)=>current is RegisteringState,
+                        buildWhen: (previous, current) =>
+                            current is RegisteringState,
                         builder: (context, state) {
                           return BuildCondition(
                             condition: state is RegisterLoadingState,
                             builder: (_) => Center(
                               child: CircularProgressIndicator(),
                             ),
-                            fallback: (BuildContext context) => defaultButton(
+                            fallback: (BuildContext context) => DefaultButton(
                                 function: () => _submit(context),
                                 text: 'Register'),
                           );
@@ -230,7 +212,7 @@ class RegisterScreen extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text('You have an account?'),
-                          defaultTextButton(
+                          DefaultTextButton(
                             function: () {
                               Navigator.of(context).pop();
                             },
@@ -259,5 +241,33 @@ class RegisterScreen extends StatelessWidget {
           ? _birthDateController.text
           : null,
     );
+  }
+
+  _registerErrorStateToast(error) {
+    print('error : ' + error.toString());
+
+    if (error is DioError && (error.error is SocketException))
+      showToast(
+          message: 'No connection to internet', state: ToastStates.FAILED);
+    else
+      showToast(message: 'There is unknownError', state: ToastStates.FAILED);
+  }
+
+  _registerSuccessStateToast(context, registerModel) {
+    if (registerModel.success.isEmpty) {
+      String errorMsg = "";
+      if (registerModel.error!.email != null)
+        errorMsg = registerModel.error!.email![0];
+      else if (registerModel.error!.name != null)
+        errorMsg = registerModel.error!.name![0];
+      else if (registerModel.error!.password != null)
+        errorMsg = registerModel.error!.password![0];
+      else
+        errorMsg = 'There is unknown error.';
+      showToast(message: errorMsg, state: ToastStates.FAILED);
+    } else {
+      showToast(message: registerModel.success, state: ToastStates.SUCCESS);
+      Navigator.of(context).pop();
+    }
   }
 }

@@ -5,9 +5,12 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tech_experts_task/bussiness_logic/login_cubit/login_cubit.dart';
-import 'package:tech_experts_task/presitation/home/home_screen.dart';
-import 'package:tech_experts_task/presitation/register/register_screen.dart';
-import 'package:tech_experts_task/shared/components/components.dart';
+import 'package:tech_experts_task/presitation/screens/home/home_screen.dart';
+import 'package:tech_experts_task/presitation/screens/register/register_screen.dart';
+import 'package:tech_experts_task/shared/components/default_button.dart';
+import 'package:tech_experts_task/shared/components/default_text_button.dart';
+import 'package:tech_experts_task/shared/components/default_text_form_field.dart';
+import 'package:tech_experts_task/shared/constants/constants.dart';
 import 'package:tech_experts_task/shared/network/local/cache_helper.dart';
 
 class LoginScreen extends StatelessWidget {
@@ -23,28 +26,9 @@ class LoginScreen extends StatelessWidget {
       listener: (context, state) {
         //TODO: implement listener
         if (state is LoginErrorState) {
-          print('error : ' + state.error.toString());
-          if ((state.error as DioError).error is SocketException)
-            showToast(
-                message: 'No connection to internet',
-                state: ToastStates.FAILED);
-          else
-            showToast(
-                message: 'There is unknownError', state: ToastStates.FAILED);
+          _loginErrorStateToast(state.error);
         } else if (state is LoginSuccessState) {
-          if (state.loginModel.error == null) {
-            print(state.loginModel.accessToken);
-            CacheHelper.saveData(
-              key: 'token',
-              value: state.loginModel.accessToken,
-            ).then((value) => navigateAndFinishTo(
-                  context: context,
-                  screen: HomeScreen(),
-                ));
-          } else {
-            showToast(
-                message: state.loginModel.error!, state: ToastStates.FAILED);
-          }
+          _loginSuccessStateToast(context, state.loginModel);
         }
       },
       child: Scaffold(
@@ -64,7 +48,7 @@ class LoginScreen extends StatelessWidget {
                     SizedBox(
                       height: 30.0,
                     ),
-                    defaultFormField(
+                    DefaultTextFormField(
                       controller: _emailController,
                       type: TextInputType.emailAddress,
                       validate: (String value) {
@@ -85,7 +69,7 @@ class LoginScreen extends StatelessWidget {
                       builder: (context, state) {
                         final loginCubit =
                             LoginCubit.get(context, listen: false);
-                        return defaultFormField(
+                        return DefaultTextFormField(
                           controller: _passwordController,
                           type: TextInputType.visiblePassword,
                           suffix: loginCubit.visibleIcon,
@@ -105,7 +89,7 @@ class LoginScreen extends StatelessWidget {
                       builder: (context, state) {
                         return BuildCondition(
                           condition: state is! LoginLoadingState,
-                          builder: (BuildContext context) => defaultButton(
+                          builder: (BuildContext context) => DefaultButton(
                               function: () => _submit(context), text: 'LOGIN'),
                           fallback: (_) => Center(
                             child: CircularProgressIndicator(),
@@ -120,7 +104,7 @@ class LoginScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text('Don\'t have an account?'),
-                        defaultTextButton(
+                        DefaultTextButton(
                           function: () {
                             navigateTo(
                                 context: context, screen: RegisterScreen());
@@ -145,5 +129,29 @@ class LoginScreen extends StatelessWidget {
     print(_passwordController.text);
     LoginCubit.get(context, listen: false).userLogin(
         email: _emailController.text, password: _passwordController.text);
+  }
+
+  _loginErrorStateToast(error) {
+    print('error : ' + error.toString());
+    if (error is DioError && error.error is SocketException)
+      showToast(
+          message: 'No connection to internet', state: ToastStates.FAILED);
+    else
+      showToast(message: 'There is unknownError', state: ToastStates.FAILED);
+  }
+
+  _loginSuccessStateToast(context, loginModel) {
+    if (loginModel.error == null) {
+      //  print(state.loginModel.accessToken);
+      CacheHelper.saveData(
+        key: 'token',
+        value: loginModel.accessToken,
+      ).then((value) => navigateAndFinishTo(
+            context: context,
+            screen: HomeScreen(),
+          ));
+    } else {
+      showToast(message: loginModel.error!, state: ToastStates.FAILED);
+    }
   }
 }

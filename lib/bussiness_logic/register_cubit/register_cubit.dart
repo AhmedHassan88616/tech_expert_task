@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:meta/meta.dart';
 import 'package:tech_experts_task/data/models/register_model.dart';
+import 'package:tech_experts_task/data/repositories/auth_repository.dart';
 import 'package:tech_experts_task/shared/endpoints/endpoints.dart';
 import 'package:tech_experts_task/shared/network/remote/dio_helper.dart';
 
@@ -15,39 +16,7 @@ class RegisterCubit extends Cubit<RegisterStates> {
   static RegisterCubit get(context, {bool listen = true}) =>
       BlocProvider.of(context, listen: listen);
 
-  void userRegister({
-    required String name,
-    required String email,
-    required String password,
-    String? address,
-    String? dateOfBirth,
-  }) {
-    final data = {
-      "name": name,
-      "email": email,
-      "password": password,
-      "role": 3,
-      "address": address,
-      "gender": genderRadioValue,
-    };
-    if (dateOfBirth != null) data["dateOfBirth"] = dateOfBirth;
-    print(data);
-    emit(RegisterLoadingState());
-    DioHelper.postData(
-      url: SIGNUP,
-      data: data,
-    ).then((value) {
-      print('data : ${value.data}');
-      if (value.data['success'].isNotEmpty) value.data['error'] = null;
-      emit(RegisterSuccessState(RegisterModel.fromJson(value.data)));
-    }).catchError((error) {
-      emit(
-        RegisterErrorState(
-          error: error,
-        ),
-      );
-    });
-  }
+  final _authenticationRepository = AuthenticationRepository();
 
   bool isPassword = true;
   IconData visibleIcon = Icons.visibility_outlined;
@@ -81,6 +50,34 @@ class RegisterCubit extends Cubit<RegisterStates> {
         emit(SelectDateOfBirthState(
             DateFormat('dd-MM-yyyy').format(selectedDate)));
       }
+    });
+  }
+
+  void userRegister({
+    required String name,
+    required String email,
+    required String password,
+    String? address,
+    String? dateOfBirth,
+  }) {
+    emit(RegisterLoadingState());
+    _authenticationRepository
+        .register(
+      name: name,
+      email: email,
+      password: password,
+      address: address,
+      dateOfBirth: dateOfBirth,
+      genderRadioValue: genderRadioValue,
+    )
+        .then((value) {
+      emit(RegisterSuccessState(value));
+    }).catchError((error) {
+      emit(
+        RegisterErrorState(
+          error: error,
+        ),
+      );
     });
   }
 }
